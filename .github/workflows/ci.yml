@@ -12,7 +12,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      node-modules-cache-key: ${{ steps.cache.outputs.cache-hit-is=true ? '${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}' : null }}
+      node-modules-cache-key: ${{ steps.cache.outputs.cache-hit-is == 'true' && '${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}' || '' }}
 
   lint:
     needs: setup
