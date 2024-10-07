@@ -9,9 +9,34 @@ on:
       - develop
 
 jobs:
+  cache:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache.outputs.cache-key }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
   lint:
     runs-on: ubuntu-latest
-
+    needs: cache
     strategy:
       matrix:
         task: [prettier-check, eslint, stylelint]
@@ -24,9 +49,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Run lint task
         run: |
@@ -44,7 +66,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: lint
+    needs: cache
 
     steps:
       - name: Checkout code
@@ -56,7 +78,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Angular project
         run: npm run build -- --prod
@@ -65,25 +87,24 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/ForestTalkClient
+          path: dist
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    environment: production
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
           name: dist
-          path: dist/ForestTalkClient
+          path: dist
 
       - name: Set Git user identity
         run: |
@@ -93,4 +114,4 @@ jobs:
       - name: Deploy to GitHub Pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx angular-cli-ghpages --dir=dist/ForestTalkClient --no-silent
+        run: npx angular-cli-ghpages --dir=dist --no-silent
